@@ -1,6 +1,10 @@
 extern crate clap;
 use clap::{crate_authors, crate_description, crate_name, crate_version, App, Arg};
 
+pub mod dateformat;
+pub mod error;
+pub mod printformat;
+
 fn main() {
     let matches = App::new(crate_name!())
         .version(crate_version!())
@@ -26,8 +30,18 @@ fn main() {
         )
         .get_matches();
 
-    let dateformat = matches.value_of("dateformat").unwrap_or("hm");
-    let printformat = matches.value_of("printformat").unwrap_or("ascii");
+    // Unwrap is used because clap verifies values
+    let dateformat = matches
+        .value_of("dateformat")
+        .unwrap_or("hm")
+        .parse::<dateformat::DateFormat>()
+        .unwrap();
+    // Unwrap is used because clap verifies values
+    let printformat = matches
+        .value_of("printformat")
+        .unwrap_or("ascii")
+        .parse::<printformat::PrintFormat>()
+        .unwrap();
 
     println!("dateformat: {}", dateformat);
     println!("printformat: {}", printformat);
