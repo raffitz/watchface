@@ -1,0 +1,13 @@
+[package]
+name = "watchface"
+version = "0.1.0"
+authors = ["raffitz <raf.a.m.c.gon@gmail.com>"]
+edition = "2018"
+description = "Displays a clock on the terminal"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = "2.33"
+cursive = "0.15"
+time = "0.2"
