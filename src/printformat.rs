@@ -1,8 +1,10 @@
 use super::error::WatchFaceError;
+use std::cmp::PartialEq;
 use std::fmt;
 use std::fmt::Display;
 use std::str::FromStr;
 
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum PrintFormat {
     Ascii,
     Block,

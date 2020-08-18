@@ -9,5 +9,5 @@ description = "Displays a clock on the terminal"
 
 [dependencies]
 clap = "2.33"
-cursive = "0.15"
+termion = "1.5"
 time = "0.2"

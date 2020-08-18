@@ -1,9 +1,10 @@
 use super::error::WatchFaceError;
+use std::cmp::PartialEq;
 use std::fmt;
 use std::fmt::Display;
 use std::str::FromStr;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum DateFormat {
     HourMinute,
     HourMinuteSecond,
@@ -11,6 +12,35 @@ pub enum DateFormat {
     MonthDayHourMinuteSecond,
     YearMonthDayHourMinute,
     YearMonthDayHourMinuteSecond,
+}
+
+impl DateFormat {
+    pub fn has_year(&self) -> bool {
+        match self {
+            DateFormat::YearMonthDayHourMinute => true,
+            DateFormat::YearMonthDayHourMinuteSecond => true,
+            _ => false,
+        }
+    }
+
+    pub fn has_month_day(&self) -> bool {
+        match self {
+            DateFormat::YearMonthDayHourMinute => true,
+            DateFormat::YearMonthDayHourMinuteSecond => true,
+            DateFormat::MonthDayHourMinute => true,
+            DateFormat::MonthDayHourMinuteSecond => true,
+            _ => false,
+        }
+    }
+
+    pub fn has_second(&self) -> bool {
+        match self {
+            DateFormat::HourMinuteSecond => true,
+            DateFormat::YearMonthDayHourMinuteSecond => true,
+            DateFormat::MonthDayHourMinuteSecond => true,
+            _ => false,
+        }
+    }
 }
 
 impl FromStr for DateFormat {
