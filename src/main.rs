@@ -2,14 +2,13 @@ extern crate clap;
 use clap::{crate_authors, crate_description, crate_name, crate_version, App, Arg};
 use std::io::{stdin, Write};
 use std::string::String;
-use std::sync::mpsc::{self, TryRecvError};
+use std::sync::mpsc;
 use std::thread;
-use std::time::Duration as StdDuration;
+use std::time::Duration;
 use termion::event::{Event, Key};
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use time::OffsetDateTime;
-use time::Duration;
 
 pub mod dateformat;
 pub mod error;
@@ -86,8 +85,7 @@ fn main() {
 
     // Stdin event reader loop
     let stdin_evt = tx_evt.clone();
-    let (tx_killstdin, rx_killstdin) = mpsc::channel();
-    let stdin_handle = thread::spawn(move || {
+    thread::spawn(move || {
         let stdin = stdin();
         for c in stdin.events() {
             let evt = c.unwrap();
@@ -98,94 +96,56 @@ fn main() {
                 }
                 _ => {}
             }
-            match rx_killstdin.try_recv() {
-                Ok(_) | Err(TryRecvError::Disconnected) => break,
-                Err(TryRecvError::Empty) => {}
-            }
         }
     });
 
     // Timer loop
-    let (tx_killtimer, rx_killtimer) = mpsc::channel();
-    let timer_handle = thread::spawn(move || {
-        'outer: while tx_evt.send(TermEvent::Refresh).is_ok() {
-            let mut target = OffsetDateTime::now_local();
-            
-            target += if dateformat.has_second() {
-                Duration::second()
-            }else{
-                Duration::minute()
+    thread::spawn(move || {
+        while tx_evt.send(TermEvent::Refresh).is_ok() {
+            let now = OffsetDateTime::now_local();
+
+            let duration: u64 = if dateformat.has_second() {
+                (1000 - now.millisecond()).into()
+            } else {
+                (60 - (now.second() as u64)) * 1000 - (now.millisecond() as u64)
             };
 
-            target -= Duration::milliseconds(target.millisecond().into());
-            if !dateformat.has_second() {
-                target -= Duration::seconds(target.second().into());
-            }
-
-            'inner: loop {
-                let now = OffsetDateTime::now_local();
-
-                if now > target {
-                    break 'inner;
-                }
-
-                match rx_killtimer.try_recv() {
-                    Ok(_) | Err(TryRecvError::Disconnected) => break 'outer,
-                    Err(TryRecvError::Empty) => {}
-                }
-
-                thread::sleep(StdDuration::from_millis(100));
-            }
+            thread::sleep(Duration::from_millis(duration));
         }
     });
 
     // Display loop
-    let mut stdout: termion::raw::RawTerminal<std::io::Stdout>;
-    match std::io::stdout().into_raw_mode() {
-        Ok(out) => {
-            stdout = out;
-            loop {
-                match rx_evt.recv() {
-                    Err(_) | Ok(TermEvent::Quit) => {
-                        let _ = tx_killtimer.send(());
-                        let _ = tx_killstdin.send(());
-                        break;
-                    }
-                    _ => {
-                        let now = OffsetDateTime::now_local();
-                        let time = update_tv(&now, &dateformat, &printformat);
-                        match write!(
-                            stdout,
-                            "{}{}{}",
-                            termion::clear::All,
-                            termion::cursor::Goto(1, 1),
-                            time
-                        ) {
-                            Ok(_) => {}
-                            Err(_) => {
-                                let _ = tx_killtimer.send(());
-                                let _ = tx_killstdin.send(());
-                                break;
-                            }
+    if let Ok(mut stdout) = std::io::stdout().into_raw_mode() {
+        loop {
+            match rx_evt.recv() {
+                Err(_) | Ok(TermEvent::Quit) => {
+                    break;
+                }
+                _ => {
+                    let now = OffsetDateTime::now_local();
+                    let time = update_tv(&now, &dateformat, &printformat);
+                    match write!(
+                        stdout,
+                        "{}{}{}",
+                        termion::clear::All,
+                        termion::cursor::Goto(1, 1),
+                        time
+                    ) {
+                        Ok(_) => {}
+                        Err(_) => {
+                            break;
                         }
-                        match stdout.flush() {
-                            Ok(_) => {}
-                            Err(_) => {
-                                let _ = tx_killtimer.send(());
-                                let _ = tx_killstdin.send(());
-                                break;
-                            }
+                    }
+                    match stdout.flush() {
+                        Ok(_) => {}
+                        Err(_) => {
+                            break;
                         }
                     }
                 }
             }
         }
-        Err(_) => {
-            let _ = tx_killtimer.send(());
-            let _ = tx_killstdin.send(());
-        }
-    };
+    }
 
-    let _ = timer_handle.join();
-    let _ = stdin_handle.join();
+    std::process::exit(0);
 }
