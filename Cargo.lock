@@ -424,7 +424,7 @@ checksum = "93b162580e34310e5931c4b792560108b10fd14d64915d7fff8ff00180e70092"
 
 [[package]]
 name = "watchface"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "clap",
  "termion",
