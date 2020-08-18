@@ -10,6 +10,7 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use time::OffsetDateTime;
 
+pub mod bitsplay;
 pub mod dateformat;
 pub mod error;
 pub mod printformat;
@@ -23,7 +24,7 @@ fn update_tv(
     now: &OffsetDateTime,
     df: &dateformat::DateFormat,
     pf: &printformat::PrintFormat,
-) -> (String, u16) {
+) -> (String, u16, u16) {
     let time = match df {
         dateformat::DateFormat::YearMonthDayHourMinuteSecond => {
             now.format("%0Y-%0m-%0d %0H:%0M:%0S")
@@ -34,9 +35,14 @@ fn update_tv(
         dateformat::DateFormat::HourMinuteSecond => now.format("%0H:%0M:%0S"),
         dateformat::DateFormat::HourMinute => now.format("%0H:%0M"),
     };
+    let size = time.chars().count() as u16;
     match pf {
-        printformat::PrintFormat::Ascii => (time, 1),
-        _ => ("unimplemented".to_string(), 1),
+        printformat::PrintFormat::Ascii => (time, size, 1),
+        printformat::PrintFormat::BlockPix => {
+            let (main, width) = bitsplay::blockpix(time);
+            (main, width, 2)
+        }
+        _ => ("unimplemented".to_string(), 13, 1),
     }
 }
 
@@ -124,29 +130,29 @@ fn main() {
                 }
                 _ => {
                     let now = OffsetDateTime::now_local();
-                    let (time, text_h) = update_tv(&now, &dateformat, &printformat);
-                    let text_w = time.len() as u16;
+                    let (time, text_w, text_h) = update_tv(&now, &dateformat, &printformat);
 
                     let mut y = 1;
                     let mut x = 1;
 
                     if let Ok((w, h)) = termion::terminal_size() {
-                        y += (h - text_h) / 2;
-                        x += (w - text_w) / 2;
-                    }
-
-                    match write!(
-                        stdout,
-                        "{}{}{}",
-                        termion::clear::All,
-                        termion::cursor::Goto(x, y),
-                        time,
-                    ) {
-                        Ok(_) => {}
-                        Err(_) => {
-                            break;
+                        if text_w <= w && text_h <= h {
+                            y += (h - text_h) / 2;
+                            x += (w - text_w) / 2;
                         }
                     }
+
+                    let _ = write!(stdout, "{}", termion::clear::All);
+
+                    for (linecounter, line) in time.lines().enumerate() {
+                        let _ = write!(
+                            stdout,
+                            "{}{}",
+                            termion::cursor::Goto(x, y + (linecounter as u16)),
+                            line
+                        );
+                    }
+
                     match stdout.flush() {
                         Ok(_) => {}
                         Err(_) => {
