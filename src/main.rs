@@ -23,20 +23,20 @@ fn update_tv(
     now: &OffsetDateTime,
     df: &dateformat::DateFormat,
     pf: &printformat::PrintFormat,
-) -> String {
-    if pf == &printformat::PrintFormat::Ascii {
-        match df {
-            dateformat::DateFormat::YearMonthDayHourMinuteSecond => {
-                now.format("%0Y:%0m:%0d:%0H:%0M:%0S")
-            }
-            dateformat::DateFormat::YearMonthDayHourMinute => now.format("%0Y:%0m:%0d:%0H:%0M"),
-            dateformat::DateFormat::MonthDayHourMinuteSecond => now.format("%0m:%0d:%0H:%0M:%0S"),
-            dateformat::DateFormat::MonthDayHourMinute => now.format("%0m:%0d:%0H:%0M"),
-            dateformat::DateFormat::HourMinuteSecond => now.format("%0H:%0M:%0S"),
-            dateformat::DateFormat::HourMinute => now.format("%0H:%0M"),
+) -> (String, u16) {
+    let time = match df {
+        dateformat::DateFormat::YearMonthDayHourMinuteSecond => {
+            now.format("%0Y-%0m-%0d %0H:%0M:%0S")
         }
-    } else {
-        "unimplemented".to_string()
+        dateformat::DateFormat::YearMonthDayHourMinute => now.format("%0Y-%0m-%0d %0H:%0M"),
+        dateformat::DateFormat::MonthDayHourMinuteSecond => now.format("%0m-%0d %0H:%0M:%0S"),
+        dateformat::DateFormat::MonthDayHourMinute => now.format("%0m-%0d %0H:%0M"),
+        dateformat::DateFormat::HourMinuteSecond => now.format("%0H:%0M:%0S"),
+        dateformat::DateFormat::HourMinute => now.format("%0H:%0M"),
+    };
+    match pf {
+        printformat::PrintFormat::Ascii => (time, 1),
+        _ => ("unimplemented".to_string(), 1),
     }
 }
 
@@ -124,14 +124,13 @@ fn main() {
                 }
                 _ => {
                     let now = OffsetDateTime::now_local();
-                    let time = update_tv(&now, &dateformat, &printformat);
+                    let (time, text_h) = update_tv(&now, &dateformat, &printformat);
                     let text_w = time.len() as u16;
-                    let text_h : u16 = 1;
 
                     let mut y = 1;
                     let mut x = 1;
 
-                    if let Ok((w,h)) = termion::terminal_size() {
+                    if let Ok((w, h)) = termion::terminal_size() {
                         y += (h - text_h) / 2;
                         x += (w - text_w) / 2;
                     }
@@ -157,7 +156,12 @@ fn main() {
                 }
             }
         }
-        let _ = write!(stdout,"{}{}",termion::clear::All,termion::cursor::Goto(1,1));
+        let _ = write!(
+            stdout,
+            "{}{}",
+            termion::clear::All,
+            termion::cursor::Goto(1, 1)
+        );
     }
 
     std::process::exit(0);
