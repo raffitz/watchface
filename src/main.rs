@@ -115,7 +115,8 @@ fn main() {
     });
 
     // Display loop
-    if let Ok(mut stdout) = std::io::stdout().into_raw_mode() {
+    if let Ok(stdout) = std::io::stdout().into_raw_mode() {
+        let mut stdout = termion::cursor::HideCursor::from(stdout);
         loop {
             match rx_evt.recv() {
                 Err(_) | Ok(TermEvent::Quit) => {
@@ -124,12 +125,23 @@ fn main() {
                 _ => {
                     let now = OffsetDateTime::now_local();
                     let time = update_tv(&now, &dateformat, &printformat);
+                    let text_w = time.len() as u16;
+                    let text_h : u16 = 1;
+
+                    let mut y = 1;
+                    let mut x = 1;
+
+                    if let Ok((w,h)) = termion::terminal_size() {
+                        y += (h - text_h) / 2;
+                        x += (w - text_w) / 2;
+                    }
+
                     match write!(
                         stdout,
                         "{}{}{}",
                         termion::clear::All,
-                        termion::cursor::Goto(1, 1),
-                        time
+                        termion::cursor::Goto(x, y),
+                        time,
                     ) {
                         Ok(_) => {}
                         Err(_) => {
