@@ -42,6 +42,10 @@ fn update_tv(
             let (main, width) = bitsplay::blockpix(time);
             (main, width, 2)
         }
+        printformat::PrintFormat::SegmentPix => {
+            let (main, width) = bitsplay::segmentpix(time);
+            (main, width, 3)
+        }
         _ => ("unimplemented".to_string(), 13, 1),
     }
 }
